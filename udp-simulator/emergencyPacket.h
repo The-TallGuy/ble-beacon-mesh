@@ -6,16 +6,22 @@ struct __attribute__((packed)) emergencyPacket
 {
 
     // HEADER (7 Bytes)
-    uint32_t phone_id_hash; // 4B: Hash al numarului de telefon (Peppered)
-    uint32_t timestamp;     // 2B: Contor minute curente (Anti-Replay)
 
-    // 1B: Metadate
-    // Bit 7 (MSB): 1 = GPS Valid, 0 = GPS Invalid
-    // Bitii 6-5  : Future use
-    // Bitii 4-0  : TTL (Time To Live, max 31 sarituri)
-    uint8_t status_flags;
+    uint32_t phone;     // 4B: Hash al numarului de telefon (Peppered)
+    uint32_t timestamp; // 4B: Contor minute de la Unix Epoch (Anti-Replay)
+
+    /*
+     1B Metadate
+     Bit 7 (MSB): 1 = GPS Valid, 0 = GPS Invalid
+     Bitii 6-5  : Future use
+     Bitii 4-0  : TTL (Time To Live, max 31 sarituri)
+    */
+    uint8_t flags;
+
+    // Asta nu are treaba cu Endianness. Are doar un byte.
 
     // PAYLOAD (8 Bytes)
+
     union LocationData
     {
         // Cazul 1: GPS Valid
@@ -31,11 +37,14 @@ struct __attribute__((packed)) emergencyPacket
     } payload;
 
     // SECURITATE (8 Bytes)
+
     uint8_t hmac_sig[8]; // 8B: Semnatura criptografica trunchiata
+
+    // Nici aici nu conteaza Endianness. Standardul C spune clar ca un array va fi aranjat in memorie in ordinea declarata.
 
     // 2 Bytes free
 };
 
 // Verificare compile-time a dimensiunii
-static_assert(sizeof(emergencyPacket) == 25, "Dimensiunea pachetului trebuie sa fie exact 23 bytes!");
+static_assert(sizeof(emergencyPacket) == 25, "Dimensiunea pachetului trebuie sa fie exact 25 bytes!");
 #endif

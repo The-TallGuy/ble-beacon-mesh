@@ -29,11 +29,11 @@ case $1 in
         ;;
     2)
         echo "[*] Starting Broadcaster: Subway Scenario (No GPS)"
-        ./victim broadcast "+40711111111" 0
+        ./victim "+40711111111" 0
         ;;
     3)
         echo "[*] Starting Broadcaster: Hiker Scenario (GPS Valid)"
-        ./victim broadcast "+40722222222" 1 44.4398 26.0428
+        ./victim "+40722222222" 1 44.4398 26.0428
         ;;
     *)
         echo "[!] Invalid scenario number."
