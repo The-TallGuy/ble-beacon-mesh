@@ -6,14 +6,15 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
+#include <endian.h>
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
-#include <endian.h>
 
 #define SERVERPORT 4950
 #define MURMUR_SEED 112
 #define TTL 20
 #define GPS_PRECISION 10000000
+#define BRD_LIFETIME 30
 
 const unsigned char secret_key[32] = {
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -90,7 +91,7 @@ int main(int argc, char *argv[])
 
     int numbytes;
 
-    while (1)
+    for (uint8_t brdSecond = 0; brdSecond < BRD_LIFETIME; brdSecond++)
     {
         numbytes = sendto(sockfd, &packet, sizeof(packet), 0, (sockaddr *)&node, sizeof(node));
         printf("Sent %d bytes to %s\n", numbytes, inet_ntoa(node.sin_addr));
