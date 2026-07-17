@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  victim:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    # Override the default CMD to run the victim payload instead
+    command: ["./victim", "+40722222222", "1", "44.4398", "26.0428"]
+    networks:
+      - zone_a
+
+  relay_1:
+    build:
+    # Uses the default CMD ("./node")
+    # Bridges the gap between the two isolated zones
+      context: ..
+      dockerfile: docker/Dockerfile
+    networks:
+      - zone_a
+      - zone_b
+
+  relay_2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    networks:
+      - zone_b
+
+  edgeshark:
+    image: ghcr.io/siemens/edgeshark
+    ports:
+      - "5001:5001" # Access via localhost:5001 in the browser
+    volumes:
+      # :ro means "Read Only"
+      # left-side address is the actual address of the docker daemon socket on the host machine
+      # right-side address is the virtual address in the EdgeShark container
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+# Define our isolated subnets (OSI layer 2 software switches)
+networks:
+  zone_a:
+    driver: bridge
+  zone_b:
+    driver: bridge
