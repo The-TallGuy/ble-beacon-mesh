@@ -6,17 +6,20 @@
 #include <unistd.h>
 #include <endian.h>
 #include "lib/circularBuff.h"
+#include <ifaddrs.h>
+
+// TERMINAL COLORING
+#define LOG_RESET "\033[0m"
+#define LOG_GREEN "\033[42;1;37m"  // Green background, bold white text
+#define LOG_CYAN "\033[46;1;37m"   // Cyan background, bold white text
+#define LOG_YELLOW "\033[43;1;37m" // Yellow background, bold white text
+//
 
 #define SERVERPORT 4950
 #define GPS_PRECISION 10000000
 
 using namespace std;
 
-/* TO DO:
-    1) Receive a Broadcast ✔️
-    2) Cache ✔️
-    3) TTL decrease ✔️
-*/
 int main()
 {
     // LISTENING
@@ -55,11 +58,14 @@ int main()
     int broadcast = 1;
     setsockopt(sendFd, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
 
-    struct sockaddr_in listeners;
-    listeners.sin_family = AF_INET;               // 1 Byte field. No need to worry abt endianness
-    listeners.sin_addr.s_addr = INADDR_BROADCAST; // Also needs to have network's endianness, but since it's literally all 1s, it's the same either way
-    listeners.sin_port = htons(SERVERPORT);
-    memset(listeners.sin_zero, 0, sizeof(listeners.sin_zero));
+    /*
+        // Good code, but it only send through the eth0 interface. Not good for the UDP simulations. See solution below
+        struct sockaddr_in listeners;
+        listeners.sin_family = AF_INET;               // 1 Byte field. No need to worry abt endianness
+        listeners.sin_addr.s_addr = INADDR_BROADCAST; // Also needs to have network's endianness, but since it's literally all 1s, it's the same either way
+        listeners.sin_port = htons(SERVERPORT);
+        memset(listeners.sin_zero, 0, sizeof(listeners.sin_zero));
+    */
 
     int sentBytes;
 
@@ -69,8 +75,10 @@ int main()
     while (1)
     {
         puts("Listening...");
+        fflush(stdout);
         recvBytes = recvfrom(listenFd, &packet, sizeof(emergencyPacket), 0, (sockaddr *)&senders, (socklen_t *)&recvAddrBytes);
-        printf("Received %d bytes from %s\n", recvBytes, inet_ntoa(senders.sin_addr));
+        printf("%s[RECEIVE] Received %d bytes from %s%s\n", LOG_CYAN, recvBytes, inet_ntoa(senders.sin_addr), LOG_RESET);
+        fflush(stdout);
 
         // cacheCheck()
         int16_t location = containsBuff(&cache, packet.hmac_sig);
@@ -78,22 +86,57 @@ int main()
         {
             addToBuff(&cache, packet.hmac_sig);
             uint8_t ttl = packet.flags & (0xFF >> 3);
-            if (ttl > 0)
+            if (ttl > 0) // Might not be necesary, but too afraid to remove atp
             {
                 ttl -= 1;
                 if (ttl != 0)
                 {
                     packet.flags = (packet.flags & (0xFF << 5)) | ttl;
-                    sentBytes = sendto(sendFd, &packet, sizeof(emergencyPacket), 0, (sockaddr *)&listeners, sizeof(listeners));
-                    printf("Sent %d bytes to %s\n", sentBytes, inet_ntoa(listeners.sin_addr));
+
+                    struct ifaddrs *ifAddrList, *ifAddrItem;
+                    if (getifaddrs(&ifAddrList) == 0)
+                    {
+                        // Loop through every network interface attached to this container
+                        for (ifAddrItem = ifAddrList; ifAddrItem != NULL; ifAddrItem = ifAddrItem->ifa_next)
+                        {
+                            if (ifAddrItem->ifa_addr == NULL)
+                                continue;
+
+                            // We only care about IPv4 interfaces
+                            if (ifAddrItem->ifa_addr->sa_family == AF_INET)
+                            {
+                                struct sockaddr_in *sa = (struct sockaddr_in *)ifAddrItem->ifa_broadaddr;
+
+                                if (sa != NULL)
+                                {
+                                    // Do not broadcast back onto the container's loopback interface
+                                    if (strcmp(ifAddrItem->ifa_name, "lo") == 0)
+                                        continue;
+
+                                    // Send a copy of the packet specifically to this subnet's broadcast address
+                                    sentBytes = sendto(sendFd, &packet, sizeof(emergencyPacket), 0, (sockaddr *)sa, sizeof(*sa));
+                                    printf("%s[FORWARD] Rebroadcasting %d bytes out %s to %s%s\n", LOG_GREEN, sentBytes, ifAddrItem->ifa_name, inet_ntoa(sa->sin_addr), LOG_RESET);
+                                    fflush(stdout);
+                                }
+                            }
+                        }
+                        freeifaddrs(ifAddrList);
+                    }
                 }
                 else
-                    puts("The package's TTL has expired!");
+                {
+                    printf("%s[DROP] Package TTL has expired!%s\n", LOG_YELLOW, LOG_RESET);
+                    fflush(stdout);
+                }
             }
         }
         else
-            printf("This package has already been processed recently. You can find its hash on row %d.\n", location);
-        sleep(1);
+        {
+            printf("%s[DROP] Package already processed (Hash on row %d). Dropping.%s\n", LOG_YELLOW, location, LOG_RESET);
+            fflush(stdout);
+        }
+        // sleep(1);
+        //! I THINK we don't need this. recvfrom() is blocking already, soo....; Plus we already have the logs
     }
     close(sendFd);
     return 0;

@@ -2,6 +2,8 @@
 #define EMERGENCY_PACKET_H
 #include <cstdint> // pentru 'packed'
 
+#define BRD_DELAY 5
+
 struct __attribute__((packed)) emergencyPacket
 {
 

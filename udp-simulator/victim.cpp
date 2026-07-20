@@ -9,6 +9,12 @@
 #include <endian.h>
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
+// #include <ifaddrs.h>     // Needed in case we link multiple network interfaces tot he victim's container
+
+// TERMINAL COLORING
+#define LOG_RESET "\033[0m"
+#define LOG_RED "\033[41;1;37m" // Red background, bold white text
+//
 
 #define SERVERPORT 4950
 #define MURMUR_SEED 112
@@ -94,9 +100,47 @@ int main(int argc, char *argv[])
     for (uint8_t brdSecond = 0; brdSecond < BRD_LIFETIME; brdSecond++)
     {
         numbytes = sendto(sockfd, &packet, sizeof(packet), 0, (sockaddr *)&node, sizeof(node));
-        printf("Sent %d bytes to %s\n", numbytes, inet_ntoa(node.sin_addr));
-        sleep(1);
+        printf("\n--------------------------\n\n");
+        printf("%s[VICTIM] Broadcasting emergency packet! Sent %d bytes to %s%s\n", LOG_RED, numbytes, inet_ntoa(node.sin_addr), LOG_RESET);
+        fflush(stdout);
+        sleep(BRD_DELAY);
     }
     close(sockfd);
     return 0;
 }
+
+// Should add this if we decide to use another network other than number 1
+/*
+struct ifaddrs *ifAddrList, *ifAddrItem;
+if (getifaddrs(&ifAddrList) == 0)
+{
+    // Loop through every network interface attached to this container
+    for (ifAddrItem = ifAddrList; ifAddrItem != NULL; ifAddrItem = ifAddrItem->ifa_next)
+    {
+        if (ifAddrItem->ifa_addr == NULL)
+            continue;
+
+        // We only care about IPv4 interfaces
+        if (ifAddrItem->ifa_addr->sa_family == AF_INET)
+        {
+            struct sockaddr_in *sa = (struct sockaddr_in *)ifAddrItem->ifa_broadaddr;
+
+            if (sa != NULL)
+            {
+                // Do not broadcast back onto the container's loopback interface
+                if (strcmp(ifAddrItem->ifa_name, "lo") == 0)
+                    continue;
+
+                // Send a copy of the packet specifically to this subnet's broadcast address
+                sentBytes = sendto(sendFd, &packet, sizeof(emergencyPacket), 0, (sockaddr *)sa, sizeof(*sa));
+                printf("%s[FORWARD] Rebroadcasting out %s to %s%s\n", LOG_GREEN, ifAddrItem->ifa_name, inet_ntoa(sa->sin_addr), LOG_RESET);
+                fflush(stdout);
+            }
+        }
+    }
+    freeifaddrs(ifAddrList);
+}
+sentBytes = sendto(sendFd, &packet, sizeof(emergencyPacket), 0, (sockaddr *)&listeners, sizeof(listeners));
+printf("%s[FORWARD] Caching and rebroadcasting %d bytes to %s%s\n", LOG_GREEN, sentBytes, inet_ntoa(listeners.sin_addr), LOG_RESET);
+fflush(stdout);
+*/

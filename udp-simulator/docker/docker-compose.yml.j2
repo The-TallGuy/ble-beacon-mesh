@@ -1,0 +1,26 @@
+services:
+  victim:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: ["./victim", "+40722222222", "1", "44.4398", "26.0428"]
+    networks:
+      - zone_1
+
+{% for relay in relays %}
+  {{ relay.name }}:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    networks:
+{% for net in relay.networks %}
+      - {{ net }}
+{% endfor %}
+{% endfor %}
+
+# Define our isolated subnets (OSI layer 2 software switches)
+networks:
+{% for i in range(1, num_zones + 1) %}
+  zone_{{ i }}:
+    driver: bridge
+{% endfor %}

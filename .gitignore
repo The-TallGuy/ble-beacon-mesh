@@ -1,3 +1,5 @@
+# --- Root ---
+
 # PlatformIO
 .pio/
 .vscode/
@@ -8,3 +10,13 @@ ble/
 
 # Arduino IDE
 ArduinoBuild/
+
+# --- Mesh Simulator ---
+
+# Compiled C++ Binaries
+node
+victim
+exit
+
+# Dynamically Generated Topologies
+udp-simulator/docker/docker-compose.yml
