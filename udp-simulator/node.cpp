@@ -59,7 +59,7 @@ int main()
     setsockopt(sendFd, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
 
     /*
-        // Good code, but it only send through the eth0 interface. Not good for the UDP simulations. See solution below
+        / Good code, but it only send through the eth0 interface. Not good for the UDP simulations. See solution below
         struct sockaddr_in listeners;
         listeners.sin_family = AF_INET;               // 1 Byte field. No need to worry abt endianness
         listeners.sin_addr.s_addr = INADDR_BROADCAST; // Also needs to have network's endianness, but since it's literally all 1s, it's the same either way
@@ -74,7 +74,7 @@ int main()
 
     while (1)
     {
-        puts("Listening...");
+        // puts("Listening...");
         fflush(stdout);
         recvBytes = recvfrom(listenFd, &packet, sizeof(emergencyPacket), 0, (sockaddr *)&senders, (socklen_t *)&recvAddrBytes);
         printf("%s[RECEIVE] Received %d bytes from %s%s\n", LOG_CYAN, recvBytes, inet_ntoa(senders.sin_addr), LOG_RESET);
@@ -113,6 +113,8 @@ int main()
                                     if (strcmp(ifAddrItem->ifa_name, "lo") == 0)
                                         continue;
 
+                                    sa->sin_port = htons(SERVERPORT);
+
                                     // Send a copy of the packet specifically to this subnet's broadcast address
                                     sentBytes = sendto(sendFd, &packet, sizeof(emergencyPacket), 0, (sockaddr *)sa, sizeof(*sa));
                                     printf("%s[FORWARD] Rebroadcasting %d bytes out %s to %s%s\n", LOG_GREEN, sentBytes, ifAddrItem->ifa_name, inet_ntoa(sa->sin_addr), LOG_RESET);
@@ -136,7 +138,7 @@ int main()
             fflush(stdout);
         }
         // sleep(1);
-        //! I THINK we don't need this. recvfrom() is blocking already, soo....; Plus we already have the logs
+        //! I THINK we don't need this. recvfrom() is blocking already, soo...; Plus we already have the logs
     }
     close(sendFd);
     return 0;

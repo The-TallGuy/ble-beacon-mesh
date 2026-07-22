@@ -18,9 +18,21 @@ services:
 {% endfor %}
 {% endfor %}
 
-# Define our isolated subnets (OSI layer 2 software switches)
+{% for exit_node in exit_nodes %}
+  {{ exit_node.name }}:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: ["./exit"]
+    networks:
+{% for net in exit_node.networks %}
+      - {{ net }}
+{% endfor %}
+{% endfor %}
+
+# Define subnets (OSI layer 2 software switches)
 networks:
-{% for i in range(1, num_zones + 1) %}
-  zone_{{ i }}:
+{% for net in networks %}
+  {{ net }}:
     driver: bridge
 {% endfor %}

@@ -11,8 +11,9 @@ WORKDIR /snuau
 # The current directory is dictated by the build context for each container in the .yml file, NOT the position of the Dockerfile
 COPY . .
 
-# Compile both the node and the victim binaries
+# Compile the routing node, exit node, and victim binaries
 RUN g++ node.cpp lib/circularBuff.cpp -o node -Wall
+RUN g++ exit.cpp lib/circularBuff.cpp -o exit -Wall
 RUN g++ victim.cpp public/MurmurHash3.cpp -o victim -lcrypto -Wall
 
 # Default to running the relay node 

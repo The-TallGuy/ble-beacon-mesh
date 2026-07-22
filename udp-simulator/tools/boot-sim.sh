@@ -14,7 +14,11 @@ docker run -d -p 8080:80 --name compoviz --rm ghcr.io/adavesik/compoviz:latest
 echo "Starting Docker Compose infrastructure..."
 cd docker && docker compose up --build -d
 
-# 4. Automate opening the default browser
+# 4. Automate log streaming in a new tab (can't load in a second command)
+# echo "Launching log stream..."
+# wt.exe -w 0 nt --title "Mesh Logs" bash -ic "./tools/logs.sh"
+
+# 5. Automate opening the default browser
 echo "Opening visualizer in default browser..."
 powershell.exe -Command "Start-Process 'http://localhost:8080'"
 

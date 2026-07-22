@@ -54,7 +54,7 @@ int main()
 
     while (1)
     {
-        puts("Listening...");
+        // puts("Listening...");
         fflush(stdout);
         recvBytes = recvfrom(listenFd, &packet, sizeof(emergencyPacket), 0, (sockaddr *)&senders, (socklen_t *)&recvAddrBytes);
         printf("%s[RECEIVE] Received %d bytes from %s%s\n", LOG_CYAN, recvBytes, inet_ntoa(senders.sin_addr), LOG_RESET);
