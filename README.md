@@ -58,6 +58,14 @@ Broadcast storm control comes from three checks:
 
 If a relay hears the same packet too many times before its own timer expires, it marks the frame as covered and cancels rebroadcast. The implementation also uses a bounded 500 ms transmit burst on the advertising side, then returns to scanning.
 
+### Data Flow
+
+The diagram below illustrates the managed flooding loop, from the initial broadcast to gateway interception.
+
+<p align="center">
+  <img src="assets/mesh-routing-sequence.png" alt="Data Flow Diagram" width="100%">
+</p>
+
 ## BLE Constraints
 
 The implementation relies on legacy BLE Advertising because it is the lowest common denominator for older phones and embedded nodes. This choice avoids connection setup and pairing overhead.
