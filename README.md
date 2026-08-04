@@ -127,3 +127,10 @@ Shut the simulator down:
 - GPS and nonce share the same 8-byte payload slot through a packed union
 - The victim side rebuilds the packet periodically so the cache and anti-replay logic stay aligned with the current emission cycle
 - The mesh is designed for short-range on-demand propagation, not for stable end-to-end paths
+
+## References
+
+The routing and caching logic in this implementation was heavily informed by the following literature:
+
+* **[The Trickle Algorithm (RFC 6206)](https://datatracker.ietf.org/doc/html/rfc6206)**: Levis, P., et al. (IETF, 2011). *Used for the adaptive timing and suppression mechanisms.*
+* **[The Broadcast Storm Problem in a Mobile Ad Hoc Network](https://www.researchgate.net/publication/220293186_The_Broadcast_Storm_Problem_in_a_Mobile_Ad_Hoc_Network)**: Ni, S., et al. (ACM MobiCom '99). *Referenced for understanding redundancy, contention, and collision in wireless flooding.*
