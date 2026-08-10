@@ -3,6 +3,7 @@
 # PlatformIO
 .pio/
 .vscode/
+arduino/include/secrets.h
 
 # Python
 __pycache__/

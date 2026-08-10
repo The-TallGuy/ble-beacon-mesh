@@ -8,6 +8,17 @@
 #include "emergencyPacket.h"
 #include "timeAwareCache.h"
 
+#define GATEWAY_MODE
+
+#ifdef GATEWAY_MODE
+#include <WiFi.h>
+#include <WiFiUdp.h>
+#include "secrets.h"
+
+WiFiUDP udpClient;
+constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 8000;
+#endif
+
 BLEScan *pBLEScan;
 BLEAdvertising *pAdvertising;
 timeAwareCache cache;
@@ -53,23 +64,49 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
           Serial.println(cacheMacStatus);
           if (location == -1)
           {
-            uint8_t ttl = packet.flags & (0xFF >> 3);
-
-            if (ttl > 0)
+#ifdef GATEWAY_MODE
+            if (WiFi.status() == WL_CONNECTED)
             {
-              ttl -= 1;
-              if (ttl != 0)
+              // Fire 3 UDP packets spaced by 5ms to guarantee delivery
+              for (uint8_t b = 0; b < 3; b++)
               {
-                packet.flags = (packet.flags & (0xFF << 5)) | ttl;
-
-                uint32_t randomJitter = random(50, 201);
-
-                addToCache(&cache, packet.hmac_sig, &packet, now, randomJitter, senderMAC);
-                Serial.printf("[QUEUED] Packet queued. Jitter: %d ms\r\n", randomJitter);
+                udpClient.beginPacket(SERVER_IP, SERVER_PORT);
+                udpClient.write(payloadRaw, length);
+                udpClient.endPacket();
+                delay(5);
               }
-              else
+
+              Serial.println("[INTERNET] Packet forwarded via UDP Burst. Ignoring BLE rebroadcast.");
+
+              addToCache(&cache, packet.hmac_sig, &packet, now, 0, senderMAC);
+
+              int16_t newLoc = checkCache(&cache, packet.hmac_sig, now, senderMAC, &cacheMacStatus);
+              if (newLoc != -1)
               {
-                Serial.printf("[DROP] Package TTL has expired!\r\n");
+                cache.entries[newLoc].broadcasted = true;
+              }
+            }
+            else
+#endif
+            {
+              uint8_t ttl = packet.flags & (0xFF >> 3);
+
+              if (ttl > 0)
+              {
+                ttl -= 1;
+                if (ttl != 0)
+                {
+                  packet.flags = (packet.flags & (0xFF << 5)) | ttl;
+
+                  uint32_t randomJitter = random(50, 201);
+
+                  addToCache(&cache, packet.hmac_sig, &packet, now, randomJitter, senderMAC);
+                  Serial.printf("[QUEUED] Packet queued. Jitter: %d ms\r\n", randomJitter);
+                }
+                else
+                {
+                  Serial.printf("[DROP] Package TTL has expired!\r\n");
+                }
               }
             }
           }
@@ -85,6 +122,30 @@ void setup()
   Serial.begin(115200);
   pinMode(LED_STATUS_PIN, OUTPUT);
   digitalWrite(LED_STATUS_PIN, LOW);
+
+#ifdef GATEWAY_MODE
+  Serial.print("Connecting to Wi-Fi...");
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+
+  uint32_t wifiStartAttempt = millis();
+
+  while (WiFi.status() != WL_CONNECTED &&
+         (millis() - wifiStartAttempt) < WIFI_CONNECT_TIMEOUT_MS)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    Serial.println("\n[SYSTEM] Wi-Fi Connected!");
+  }
+  else
+  {
+    Serial.println("\n[SYSTEM] Wi-Fi not found. Continuing in BLE-only relay mode.");
+    WiFi.disconnect(true);
+  }
+#endif
 
   randomSeed(analogRead(0));
 

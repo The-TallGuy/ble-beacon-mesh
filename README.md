@@ -77,56 +77,46 @@ Only Manufacturer Specific Data is used for the application payload. The layout 
 - `arduino/` ESP32 implementation for the source and relay roles
 - `udp-simulator/` C++ mesh simulator that mirrors the relay logic over UDP
 - `python-scanner/` simple BLE scan utility for inspecting live advertisements
-- `setup-arduino.sh` and `setup-arduino.ps1` helpers that prepare Arduino-compatible sketches from the PlatformIO source tree
 
-## Build Surfaces
+## Building
 
 ### ESP32 with PlatformIO
 
-The Arduino implementation is configured for `esp32dev` in `arduino/platformio.ini`.
+This project uses [PlatformIO](https://platformio.org/) for dependency management and reproducible builds. The configuration is handled in `arduino/platformio.ini`.
 
-### Arduino IDE Sketch Export
+1. **Clone the repository and navigate to the hardware directory:**
+    ```bash
+    git clone https://github.com/The-TallGuy/ble-beacon-mesh
+    cd ble-beacon-mesh/arduino
+    ```
 
-Use the helper scripts as a fallback when PlatformIO is unable to compile.
+2. **Build and flash the firmware to a connected ESP32 via USB:**
+    ```bash
+    pio run -e relay -t upload
+    ```
 
-On Linux or WSL:
-```bash
-./setup-arduino.sh relay
-./setup-arduino.sh victim
-```
+3.  **Monitor serial output:**
+    ```bash
+    pio device monitor
+    ```
 
-On Windows PowerShell:
-```powershell
-./setup-arduino.ps1 relay
-./setup-arduino.ps1 victim
-```
+### Troubleshooting
 
-### UDP Mesh Simulator
+**Windows Compilation Errors (Path Too Long):**
+If building on Windows fails with missing file errors deep in the framework directory, you may need to enable long path support in the registry:
+1. Open PowerShell as Administrator.
+2. Run: `New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force`
+3. Restart your terminal or IDE.
 
-The simulator reproduces the same packet forwarding model over UDP for offline testing.
+## Gateway Node Configration
 
-Boot the simulator:
-```bash
-cd udp-simulator
-./tools/boot-sim.sh
-```
+If you intend to use a device as a gateway node, forwarding BLE packets over Wi-Fi via UDP, you must configure your network credentials:
 
-Watch live packet flow:
-```bash
-./tools/logs.sh
-```
+1. Locate `secrets.example.h` in the `arduino/include` directory.
+2. Copy or rename it to `secrets.h`.
+3. Update `WIFI_SSID`, `WIFI_PASS`, and the upstream `SERVER_IP` with your local test environment details.
 
-Shut the simulator down:
-```bash
-./tools/close-sim.sh
-```
-
-## Implementation Notes
-
-- TTL is stored in the low 5 bits of `flags` and decremented at every hop
-- GPS and nonce share the same 8-byte payload slot through a packed union
-- The victim side rebuilds the packet periodically so the cache and anti-replay logic stay aligned with the current emission cycle
-- The mesh is designed for short-range on-demand propagation, not for stable end-to-end paths
+*Note: `secrets.h` is ignored by Git to prevent accidentally leaking network credentials.*
 
 ## References
 
