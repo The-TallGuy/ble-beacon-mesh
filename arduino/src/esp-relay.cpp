@@ -58,7 +58,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 
           const uint8_t *senderMAC = advertisedDevice.getAddress().getNative();
 
-          // Activam semaforul (marcam ca foloseste cineva resursa)
+          // Activate semaphore, marking the cache as 'in use'
           xSemaphoreTake(cacheMutex, portMAX_DELAY);
           int16_t location = checkCache(&cache, packet.hmac_sig, now, senderMAC, &cacheMacStatus);
           Serial.println(cacheMacStatus);
@@ -76,7 +76,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 delay(5);
               }
 
-              Serial.println("[INTERNET] Packet forwarded via UDP Burst. Ignoring BLE rebroadcast.");
+              Serial.println("[EXIT] Packet forwarded via UDP Burst.");
 
               addToCache(&cache, packet.hmac_sig, &packet, now, 0, senderMAC);
 
@@ -101,14 +101,18 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                   uint32_t randomJitter = random(50, 201);
 
                   addToCache(&cache, packet.hmac_sig, &packet, now, randomJitter, senderMAC);
-                  Serial.printf("[QUEUED] Packet queued. Jitter: %d ms\r\n", randomJitter);
+                  Serial.printf("[QUEUE] Packet queued. Jitter: %d ms\r\n", randomJitter);
                 }
                 else
                 {
-                  Serial.printf("[DROP] Package TTL has expired!\r\n");
+                  Serial.printf("[DROP] Package TTL has expired.\r\n");
                 }
               }
             }
+          }
+          else
+          {
+            Serial.printf("[DROP] Packet already in cache.\r\n");
           }
           xSemaphoreGive(cacheMutex);
         }
@@ -160,7 +164,7 @@ void setup()
 
   pAdvertising = BLEDevice::getAdvertising();
 
-  // Pornim scanarea in regim continuu, asincron
+  // Start scanning for BLE devices
   pBLEScan->start(0, nullptr, false);
 }
 
@@ -176,8 +180,8 @@ void loop()
       digitalWrite(LED_STATUS_PIN, LOW);
       pBLEScan->start(0, nullptr, false);
       isBroadcasting = false;
-      cache.entries[currentBroadcastIndex].broadcasted = true; // Nu-l mai emitem iar
-      Serial.println("[BURST] Transmission completed and stopped.\r\n");
+      cache.entries[currentBroadcastIndex].broadcasted = true; // No need to reboradcast
+      Serial.println("[BROADCAST] Transmission completed and stopped.\r\n");
     }
     return;
   }

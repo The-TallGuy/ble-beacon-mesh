@@ -5,9 +5,10 @@
 .vscode/
 arduino/include/secrets.h
 
-# Python
+# Python scanner
 __pycache__/
 ble/
+*.html
 
 # Arduino IDE
 ArduinoBuild/
